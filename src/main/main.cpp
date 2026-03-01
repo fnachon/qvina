@@ -28,7 +28,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/exception.hpp>
-#include <boost/filesystem/convenience.hpp> // filesystem::basename
+#include <boost/filesystem.hpp> // filesystem::basename
 #include <boost/thread/thread.hpp> // hardware_concurrency // FIXME rm ?
 #include <boost/date_time/posix_time/posix_time.hpp> // for time in microseconds
 #include "parse_pdbqt.h"
@@ -164,8 +164,8 @@ void writeHistory(model& m, parallel_mc& par, tee& log) {
 	log.flush();
 	const sz chunkSize = 10000;
 	VINA_FOR(i, par.task_container.size()){
-		parallel_mc_task task = par.task_container[i];
-		output_container& history = task.history;
+		const parallel_mc_task& task = par.task_container[i];
+		const output_container& history = task.history;
 		sz totalSteps = history.size();
 		log<< "starting history #" << i << ", # of steps=" << totalSteps; log.endl();
 
@@ -183,7 +183,9 @@ void writeHistory(model& m, parallel_mc& par, tee& log) {
 
 			log << "File: " << historyFileName;log.endl(); log.flush();
 			std::vector<std::string> dummyRemarks;
-			for (int j = start; j < start+chunkSize , j< totalSteps; ++j)
+			const sz thisChunk = (start + chunkSize < totalSteps) ? chunkSize : (totalSteps - start);
+			dummyRemarks.reserve(thisChunk);
+			for(sz j = start; j < start + chunkSize && j < totalSteps; ++j)
 				dummyRemarks.push_back("REMARK step #"+ boost::lexical_cast<std::string>(j+1)+" \tenergy=" + boost::lexical_cast<std::string>(history[j].e).substr(0,9)+"\n");
 			write_all_output(m, history, start, chunkSize, historyFileName, dummyRemarks);
 		}

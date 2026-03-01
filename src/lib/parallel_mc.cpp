@@ -58,7 +58,8 @@ void merge_output_containers(const parallel_mc_task_container& many, output_cont
 void parallel_mc::operator()(const model& m, output_container& out, const precalculate& p, const igrid& ig, const precalculate& p_widened, const igrid& ig_widened, const vec& corner1, const vec& corner2, rng& generator) /*const */{
 	parallel_progress pp;
 	parallel_mc_aux parallel_mc_aux_instance(&mc, &p, &ig, &p_widened, &ig_widened, &corner1, &corner2, (display_progress ? (&pp) : NULL));
-//	parallel_mc_task_container task_container;
+	task_container.clear();
+	task_container.reserve(num_tasks);
 	VINA_FOR(i, num_tasks)
 		task_container.push_back(std::auto_ptr<parallel_mc_task>(new parallel_mc_task(m, random_int(0, 1000000, generator), new circularvisited())));
 

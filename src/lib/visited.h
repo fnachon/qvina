@@ -38,7 +38,7 @@ struct ele
 	long long d_zero;// if zero, bit=1; if not zero, bit=0
 	long long d_positive;// positive, bit=1; negative, bit=0
 
-	ele(std::vector<double> x_, double f_, std::vector<double> d_): x(std::vector<double>(x_)),f(f_)
+	ele(const std::vector<double>& x_, double f_, const std::vector<double>& d_): x(x_), f(f_)
 	{
 //		this->x=std::vector<double>(x_);
 //		this->f= f_;
@@ -50,7 +50,7 @@ struct ele
 		long long bitMask  =0x0000000000000000;
 
 		//N.B.: now, d_zero and d_positive count from right to left
-		for (int i=0;i<d_.size();i++){
+		for(sz i = 0; i < d_.size(); ++i) {
 			bitMask=ONE<<i;
 //			d_zero=d_zero<<1;
 //			d_positive=d_positive<<1;
@@ -62,27 +62,28 @@ struct ele
 		}
 	}
 
-	inline long long getMask()
+	inline long long getMask() const
 	{
-		long long out=(1<<(this->x.size()))-1;
+		const long long ONE = 0x0000000000000001LL;
+		long long out = (ONE << x.size()) - 1;
 		return out; 
 	} 
 
-	inline int size()
+	inline sz size() const
 	{
 		return x.size();
 	}
 
-	void print()
+	void print() const
 	{
 		::print(x);printf(" %f\n",f);
 		printf("d_zero=%lld\td_positive=%lld\n",d_zero,d_positive);
 	}
 
-	double dist2(std::vector<double>);
-	double dist2_3D(std::vector<double>);
+	double dist2(const std::vector<double>& now) const;
+	double dist2_3D(const std::vector<double>& now) const;
 
-	bool check(std::vector<double>, double, std::vector<double>) const;
+	bool check(const std::vector<double>&, double, const std::vector<double>&) const;
 };
 
 struct Vec3 {
@@ -113,7 +114,7 @@ struct Vec3 {
 	Vec3 operator/(float r) const {
 		return Vec3(x/r,y/r,z/r);
 	}
-	bool operator<(const Vec3& o){
+	bool operator<(const Vec3& o) const {
 		return x<o.x && y< o.y && z<o.z;
 	}
 };
@@ -153,14 +154,17 @@ class Octree {
 public:
 
 	static Octree* getInstance();
-	int interesting(conf x, double f,change g, int excluded) ;
+	int interesting(conf& x, double f, change& g, int excluded);
 
-	inline bool add(conf conf_v, double f, change change_v){
-		std::vector<double> tempx =std::vector<double>();
+	inline bool add(conf& conf_v, double f, change& change_v) {
+		const sz n = change_v.num_floats();
+		std::vector<double> tempx;
+		tempx.reserve(n);
 		conf_v.getV(tempx);
-		std::vector<double> tempd =std::vector<double>();
+		std::vector<double> tempd;
+		tempd.reserve(n);
 		change_v.getV(tempd);
-		ele* element = new ele(tempx, f, tempd);
+		const ele element(tempx, f, tempd);
 		return insert(element);
 	}
 
@@ -181,7 +185,7 @@ public:
 	}
 
 	// Determine which octant of the tree would contain 'point'
-	int getOctantContainingPoint(std::vector<double>& point){
+	int getOctantContainingPoint(const std::vector<double>& point) const {
 		int oct = 0;
 		if(point[0] >= origin.x) oct |= 1;
 		if(point[1] >= origin.y) oct |= 2;
@@ -196,11 +200,11 @@ public:
 		return internal;
 	}
 
-	bool insert(ele* point) {
+	bool insert(const ele& point) {
 		if(isInternalNode()) {
 			// We are at an interior node. Insert recursively into the
 			// appropriate child octant
-			int octant = getOctantContainingPoint(point->x);
+			const int octant = getOctantContainingPoint(point.x);
 			children[octant]->insert(point);
 			return true;
 		} else {
@@ -217,7 +221,7 @@ public:
 #ifndef serial
 				WriteLock w_lock(lock);
 #endif
-				data.push_back(*point);
+				data.push_back(point);
 				return true;
 			} else {
 				//else split and add the old data that was here, along with
@@ -251,11 +255,11 @@ public:
 				// Re-insert the old point, and insert this new point
 				// (We wouldn't need to insert from the root, because we already
 				// know it's guaranteed to be in this section of the tree)
-				for (int i= 0; i < data.size() ; ++i) {
-					ele oldPoint = data[i];
-					children[getOctantContainingPoint(oldPoint.x)]->insert(&oldPoint);
+				for(sz i = 0; i < data.size(); ++i) {
+					const ele& oldPoint = data[i];
+					children[getOctantContainingPoint(oldPoint.x)]->insert(oldPoint);
 				}
-				children[getOctantContainingPoint(point->x)]->insert(point);
+				children[getOctantContainingPoint(point.x)]->insert(point);
 				//raise the internal node flag
 				this->internal=true;
 				return true;
@@ -267,7 +271,7 @@ public:
 	// This is a really simple routine for querying the tree for points
 	// within a bounding box defined by min/max points (bmin, bmax)
 	// All results are pushed into 'results'
-	void getPointsWithinCutoff(float cutoff2,std::vector<double> point, const Vec3& boundarymin, const Vec3& boundarymax, std::vector<ele>& results, std::vector<double>& distances) {
+	void getPointsWithinCutoff(float cutoff2, const std::vector<double>& point, const Vec3& boundarymin, const Vec3& boundarymax, std::vector<ele>& results, std::vector<double>& distances) {
 		// If we're at a leaf node, just see if the current data point is inside
 		// the query bounding box
 		if(isInternalNode()) {
@@ -287,16 +291,18 @@ public:
 			}
 		}else {
 			if(data) {
-				double temp;
 			//if terminal (indivisible) and distance between the two centers in 3D <=  cutoff/2
 //				if(terminal && (point[0]-origin.x)*(point[0]-origin.x)+(point[1]-origin.y)*(point[1]-origin.y)+(point[2]-origin.z)*(point[1]-origin.y) < cutoff2/4){
-				if(terminal && ((temp=(point[0]-origin.x))*temp)+((temp=(point[1]-origin.y))*temp)+((temp=(point[2]-origin.z))*temp) < cutoff2/4){
+				const double dx = point[0] - origin.x;
+				const double dy = point[1] - origin.y;
+				const double dz = point[2] - origin.z;
+				if(terminal && (dx*dx + dy*dy + dz*dz) < cutoff2/4){
 //					add all points
 					std::vector<ele>& data = *this->data;
 #ifndef serial
 					ReadLock r_lock(lock);
 #endif
-					for (int i= 0; i < data.size(); ++i) {
+					for(sz i = 0; i < data.size(); ++i) {
 //						results.push(*new Envelop(data[i],data[i].dist2(point)));
 						results.push_back(data[i]);
 						distances.push_back(data[i].dist2(point));
@@ -307,7 +313,7 @@ public:
 #ifndef serial
 					ReadLock r_lock(lock);
 #endif
-					for (int i= 0; i < data.size(); ++i) {
+					for(sz i = 0; i < data.size(); ++i) {
 //						const std::vector<double>& p = data[i].x;
 //						if(p[0]>boundarymax.x || p[1]>boundarymax.y || p[2]>boundarymax.z) continue;
 //						if(p[0]<boundarymin.x || p[1]<boundarymin.y || p[2]<boundarymin.z) continue;
@@ -341,11 +347,11 @@ class circularvisited /*: public visited*/ {
 	bool full;
 	
 public:
-	inline int get_maxCheck(){
+	inline int get_maxCheck() const {
 		return 4*n_variable;
 	}
 
-	inline int get_maxSize(){
+	inline int get_maxSize() const {
 		return 5*n_variable;
 	}
 
@@ -358,13 +364,16 @@ public:
 		full=false;
 	}
 
-	int interesting(conf x, double f,change g, int excluded) ;
+	int interesting(conf& x, double f, change& g, int excluded);
 
-	bool add(conf conf_v, double f, change change_v)
+	bool add(conf& conf_v, double f, change& change_v)
 	{
-		std::vector<double> tempx =std::vector<double>();
+		const sz n = change_v.num_floats();
+		std::vector<double> tempx;
+		tempx.reserve(n);
 		conf_v.getV(tempx);
-		std::vector<double> tempd =std::vector<double>();
+		std::vector<double> tempd;
+		tempd.reserve(n);
 		change_v.getV(tempd);
 		double tempf =f;
 
@@ -393,20 +402,20 @@ public:
 		return true;
 	} 
 	
-	inline ele get(int i)
+	inline const ele& get(sz i) const
 	// no boundary check
 	{ 
 		return list[i];
 	} 
 
-	inline int size()
+	inline sz size() const
 	{
 		return list.size();
 	} 
 
 	void print()
 	 {
-		for (int i=0;i<size();i++)
+		for (sz i = 0; i < size(); ++i)
 	 	{
 			this->get(i).print();
 			printf("\n");

@@ -21,7 +21,7 @@ struct ele
 	long long d_zero;// if zero, bit=1; if not zero, bit=0
 	long long d_positive;// positive, bit=1; negative, bit=0
 
-	ele(std::vector<double> x_, double f_, std::vector<double> d_)
+	ele(const std::vector<double>& x_, double f_, const std::vector<double>& d_)
 	{
 		this->x=std::vector<double>(x_);
 		this->f= f_;
@@ -49,26 +49,26 @@ struct ele
 ////		this->d=NULL;
 //	}
 
-	inline long long getMask()
+	inline long long getMask() const
 	{
 		long long out=(1<<(this->x.size()))-1;
 		return out; 
 	} 
 
-	inline int size()
+	inline int size() const
 	{
 		return x.size();
 	}
 
-	void print()
+	void print() const
 	{
 		::print(x);printf(" %f\n",f);
 		printf("d_zero=%lld\td_positive=%lld\n",d_zero,d_positive);
 	}
 
-	double dist2(std::vector<double>);
+	double dist2(const std::vector<double>& now) const;
 
-	bool check(std::vector<double>, double, std::vector<double>);
+	bool check(const std::vector<double>& now_x, double now_f, const std::vector<double>& now_d) const;
 };
 
 
@@ -87,7 +87,7 @@ struct visited {
 		return 5*n_variable;
 	}
 
-	bool interesting(conf x, double f,change g);
+	bool interesting(const conf& x, double f, const change& g);
 
 	visited(){
 //		std::cout<<"Visited Instance created"<<std::endl;
@@ -97,7 +97,7 @@ struct visited {
 		full=false;
 	}
 
-	bool add(conf conf_v, double f, change change_v)
+	bool add(const conf& conf_v, double f, const change& change_v)
 	{
 		std::vector<double> tempx =std::vector<double>();
 		conf_v.getV(tempx);
@@ -130,20 +130,20 @@ struct visited {
 		return true;
 	} 
 	
-	inline ele get(int i)
+	inline const ele& get(int i) const
 	// no boundary check
 	{ 
 		return list[i];
 	} 
 
-	inline int size()
+	inline int size() const
 	{
 		return list.size();
 	} 
 
-	void print()
+	void print() const
 	 {
-		for (int i=0;i<size();i++)
+			for (int i=0;i<size();i++)
 	 	{
 			this->get(i).print();
 			printf("\n");

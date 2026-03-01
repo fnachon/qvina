@@ -85,7 +85,7 @@ struct rigid_change {
 		::print(position);
 		::print(orientation);
 	}
-	void getV( std::vector<double>& out)
+	void getV( std::vector<double>& out) const
 	{
 		::getV(position,out);
 		::getV(orientation,out);
@@ -142,7 +142,7 @@ struct rigid_conf {
 		::print(orientation);
 	} 
 
-	void getV(std::vector<double> & out)
+	void getV(std::vector<double> & out) const
 	{
 		::getV(position,out);
 		::getV(orientation,out);
@@ -164,7 +164,7 @@ struct ligand_change {
 		rigid.print();
 		printnl(torsions);
 	}
-	void getV(std::vector<double> & out)
+	void getV(std::vector<double> & out) const
 	{
 		rigid.getV(out);
 		for (int i=0;i<torsions.size();i++)
@@ -194,7 +194,7 @@ struct ligand_conf {
 		printnl(torsions);
 	}
 
-	void getV(std::vector<double> & out)
+	void getV(std::vector<double> & out) const
 	{
 		rigid.getV(out);
 		for (int i=0;i<torsions.size();i++)
@@ -216,7 +216,7 @@ struct residue_change {
 	void print() const {
 		printnl(torsions);
 	}
-	void getV(std::vector<double>& out)
+	void getV(std::vector<double>& out) const
 	{
 		for (int i=0;i<torsions.size();i++)
 		{
@@ -239,7 +239,7 @@ struct residue_conf {
 	void print() const {
 		printnl(torsions);
 	}
-	void getV(std::vector<double>& out)
+	void getV(std::vector<double>& out) const
 	{
 		for (int i=0;i<torsions.size();i++)
 		{
@@ -313,7 +313,7 @@ struct change {
 		VINA_FOR_IN(i, flex)
 			flex[i].print();
 	}
-	void getV(std::vector<double>& out)  {
+	void getV(std::vector<double>& out) const {
 		VINA_FOR_IN(i, ligands)
 			ligands[i].getV(out);
 		VINA_FOR_IN(i, flex)
@@ -395,8 +395,7 @@ struct conf {
 		VINA_FOR_IN(i, flex)
 			flex[i].print();
 	} 
-	void getV(std::vector<double>& out)
-	{
+	void getV(std::vector<double>& out) const {
 		VINA_FOR_IN(i, ligands)
 			ligands[i].getV(out);
 		VINA_FOR_IN(i, flex)

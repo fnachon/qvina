@@ -51,7 +51,7 @@ private:
 	atom_type::t atu;
 	std::vector<grid> grids;
 
-	void populateChunk(int ThreadId, const model& m, const szv& needed, const precalculate& p, grid& g, sz start, sz end);
+	void populateChunk(const model& m, const szv& needed, const precalculate& p, const szv_grid& ig, const grid& g, sz start, sz end);
 
 	friend class boost::serialization::access;
 	template<class Archive>

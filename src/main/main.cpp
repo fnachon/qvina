@@ -28,7 +28,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/exception.hpp>
-#include <boost/filesystem/convenience.hpp> // filesystem::basename
+#include <boost/filesystem.hpp> // filesystem::basename
 #include <boost/thread/thread.hpp> // hardware_concurrency // FIXME rm ?
 #include <boost/date_time/posix_time/posix_time.hpp> // for time in microseconds
 #include "parse_pdbqt.h"
@@ -342,15 +342,20 @@ void main_procedure(model& m, const boost::optional<model>& ref, // m is non-con
 					  seed, verbosity, score_only, local_only, log, t, weights);
 		}
 		else {
-			bool cache_needed = !(score_only || randomize_only || local_only);
-			//TODO read the grid if available
-			if(cache_needed) doing(verbosity, "Analyzing the binding site", log);
-			cache c("scoring_function_version001", gd, slope, atom_type::XS);
-			if(cache_needed) c.populate(m, prec, m.get_movable_atom_types(prec.atom_typing_used()));
-//			if(cache_needed) c.populateparalell(m, prec, m.get_movable_atom_types(prec.atom_typing_used()),false, cpu);
-			if(cache_needed) done(verbosity, log);
-			//TODO write the grid if requested to do
-			do_search(m, ref, wt, prec, c, prec, c, nc,
+				bool cache_needed = !(score_only || randomize_only || local_only);
+				//TODO read the grid if available
+				if(cache_needed) doing(verbosity, "Analyzing the binding site", log);
+				cache c("scoring_function_version001", gd, slope, atom_type::XS);
+				if(cache_needed) {
+					const szv movable_atom_types = m.get_movable_atom_types(prec.atom_typing_used());
+					if(cpu > 1)
+						c.populateparalell(m, prec, movable_atom_types, false, cpu);
+					else
+						c.populate(m, prec, movable_atom_types);
+				}
+				if(cache_needed) done(verbosity, log);
+				//TODO write the grid if requested to do
+				do_search(m, ref, wt, prec, c, prec, c, nc,
 					  out_name,
 					  corner1, corner2,
 					  par, energy_range, num_modes,

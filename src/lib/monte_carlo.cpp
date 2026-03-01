@@ -89,15 +89,23 @@ void monte_carlo::operator()(model& m, output_container& out, const precalculate
 	output_type tmp(s, 0);
 	tmp.c.randomize(corner1, corner2, generator);
 	fl best_e = max_fl;
+	unsigned long pending_progress = 0;
+	const unsigned long progress_batch = 32;
 	quasi_newton quasi_newton_par; quasi_newton_par.max_steps = ssd_par.evals;
 	VINA_U_FOR(step, num_steps) {
-		if(increment_me)
-			++(*increment_me);
-		output_type candidate = tmp;
+		if(increment_me) {
+			++pending_progress;
+			if(pending_progress >= progress_batch) {
+				increment_me->increment(pending_progress);
+				pending_progress = 0;
+			}
+		}
+		output_type candidate(tmp.c, tmp.e);
 		mutate_conf(candidate.c, m, mutation_amplitude, generator);
 		quasi_newton_par(m, p, ig, candidate, g, hunt_cap);
 		if(step == 0 || metropolis_accept(tmp.e, candidate.e, temperature, generator)) {
-			tmp = candidate;
+			tmp.c = candidate.c;
+			tmp.e = candidate.e;
 
 			m.set(tmp.c); // FIXME? useless?
 
@@ -110,8 +118,10 @@ void monte_carlo::operator()(model& m, output_container& out, const precalculate
 				if(tmp.e < best_e)
 					best_e = tmp.e;
  			}
-  		}
- 	}
+	  		}
+	 	}
+	if(increment_me && pending_progress > 0)
+		increment_me->increment(pending_progress);
 	VINA_CHECK(!out.empty());
 	VINA_CHECK(out.front().e <= out.back().e); // make sure the sorting worked in the correct order
 }

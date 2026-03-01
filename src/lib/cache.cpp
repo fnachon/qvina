@@ -38,6 +38,7 @@
 
 #include <boost/serialization/split_member.hpp>
 #include <boost/thread/thread.hpp>
+#include <boost/ref.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/static_assert.hpp>
 #include "cache.h"
@@ -129,22 +130,27 @@ using namespace boost::posix_time;
 		return;
 
 	grid& g = grids[needed.front()];
+	const fl cutoff_sqr = p.cutoff_sqr();
+	grid_dims gd_reduced = szv_grid_dims(gd);
+	szv_grid ig(m, gd_reduced, cutoff_sqr);
 
 	boost::thread_group threadGroup;
 	sz total = g.m_data.dim0() * g.m_data.dim1() * g.m_data.dim2();
-	int chunkSize = total / noOfCpus;
+	if(total == 0)
+		return;
+	const sz cpu_count = (noOfCpus > 0) ? static_cast<sz>(noOfCpus) : 1;
+	const sz worker_count = (std::min)(cpu_count, total);
+	const sz chunkSize = (total + worker_count - 1) / worker_count;
 //	std::cout << "CPUs = "<< noOfCpus << ", chunk size=" << chunkSize << std::endl;
 //	std::cout << "starting the 2nd parallel part..."<<std::endl;
 //	ptime time_start2(microsec_clock::local_time());
 
 	//do the parallel population part
-	for (int threadId = 0; threadId < noOfCpus; ++threadId) {
-		sz start=threadId*chunkSize;
-		if (threadId==noOfCpus-1 && total%noOfCpus != 0) {
-			chunkSize= total % noOfCpus;
-		}
+	VINA_FOR(threadId, worker_count) {
+		const sz start = threadId * chunkSize;
+		const sz end = (std::min)(total, start + chunkSize);
 		boost::thread* th = new boost::thread(&cache::populateChunk, this,
-				threadId, m, needed, p, g, start, start + chunkSize);
+				boost::cref(m), boost::cref(needed), boost::cref(p), boost::cref(ig), boost::cref(g), start, end);
 		threadGroup.add_thread(th);
 	}
 	threadGroup.join_all();
@@ -153,13 +159,10 @@ using namespace boost::posix_time;
 //	std::cout << "finished the 2nd parallel part. time= "<<(duration2.total_milliseconds()/1000.0)<<std::endl;
 }
 
-void cache::populateChunk(int threadId, const model& m, const szv& needed, const precalculate& p, grid& g, sz start, sz end) {
-	std::cout<<"function called with threadId "<<threadId << std::endl;
+void cache::populateChunk(const model& m, const szv& needed, const precalculate& p, const szv_grid& ig, const grid& g, sz start, sz end) {
 	flv affinities(needed.size());
 	sz nat = num_atom_types(atu);
 	const fl cutoff_sqr = p.cutoff_sqr();
-	grid_dims gd_reduced = szv_grid_dims(gd);
-	szv_grid ig(m, gd_reduced, cutoff_sqr);
 
 
 	sz lineLength=g.m_data.dim0();
@@ -185,14 +188,14 @@ void cache::populateChunk(int threadId, const model& m, const szv& needed, const
 			const sz t1 = a.get(atu);
 			if(t1 >= nat) continue;
 			const fl r2 = vec_distance_sqr(a.coords, probe_coords);
-			if(r2 <= cutoff_sqr) {
-				VINA_FOR_IN(j, needed) {
-					const sz t2 = needed[j];
-					assert(t2 < nat);
-					const sz type_pair_index = triangular_matrix_index_permissive(num_atom_types(atu), t1, t2);
-					affinities[j] += p.eval_fast(type_pair_index, r2);
+				if(r2 <= cutoff_sqr) {
+					VINA_FOR_IN(j, needed) {
+						const sz t2 = needed[j];
+						assert(t2 < nat);
+						const sz type_pair_index = triangular_matrix_index_permissive(nat, t1, t2);
+						affinities[j] += p.eval_fast(type_pair_index, r2);
+					}
 				}
-			}
 		}
 		VINA_FOR_IN(j, needed){
 			sz t = needed[j];
@@ -247,14 +250,14 @@ using namespace boost::posix_time;
 					const sz t1 = a.get(atu);
 					if(t1 >= nat) continue;
 					const fl r2 = vec_distance_sqr(a.coords, probe_coords);
-					if(r2 <= cutoff_sqr) {
-						VINA_FOR_IN(j, needed) {
-							const sz t2 = needed[j];
-							assert(t2 < nat);
-							const sz type_pair_index = triangular_matrix_index_permissive(num_atom_types(atu), t1, t2);
-							affinities[j] += p.eval_fast(type_pair_index, r2);
+						if(r2 <= cutoff_sqr) {
+							VINA_FOR_IN(j, needed) {
+								const sz t2 = needed[j];
+								assert(t2 < nat);
+								const sz type_pair_index = triangular_matrix_index_permissive(nat, t1, t2);
+								affinities[j] += p.eval_fast(type_pair_index, r2);
+							}
 						}
-					}
 				}
 				VINA_FOR_IN(j, needed) {
 					sz t = needed[j];

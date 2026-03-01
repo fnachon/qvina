@@ -25,6 +25,11 @@
 
 struct incrementable {
 	virtual void operator++() = 0;
+	virtual void increment(unsigned long n) {
+		for(unsigned long i = 0; i < n; ++i)
+			++(*this);
+	}
+	virtual ~incrementable() {}
 };
 
 #endif

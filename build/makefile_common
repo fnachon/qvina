@@ -10,11 +10,12 @@ CC = ${GPP} ${C_PLATFORM} -std=c++14 -Wno-long-long ${C_OPTIONS} $(INCFLAGS)
 LDFLAGS = -L$(BASE)/lib -L.
 
 STATIC_BOOST ?= 0
+STATIC_BOOST_LIBS = $(BASE)/lib/libboost_thread.a \
+					$(BASE)/lib/libboost_serialization.a \
+					$(BASE)/lib/libboost_filesystem.a \
+					$(BASE)/lib/libboost_program_options.a
 ifeq ($(STATIC_BOOST),1)
-LIBS = $(BASE)/lib/libboost_thread.a \
-	   $(BASE)/lib/libboost_serialization.a \
-	   $(BASE)/lib/libboost_filesystem.a \
-	   $(BASE)/lib/libboost_program_options.a
+LIBS = $(STATIC_BOOST_LIBS)
 else
 LIBS = -l boost_thread${BOOST_LIB_VERSION} -l boost_serialization${BOOST_LIB_VERSION} -l boost_filesystem${BOOST_LIB_VERSION} -l boost_program_options${BOOST_LIB_VERSION}
 endif
@@ -42,6 +43,14 @@ qvina2: $(MAINOBJ) $(LIBOBJ)
 
 qvina2_split: $(SPLITOBJ)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+qvina2_static: $(MAINOBJ) $(LIBOBJ)
+	$(CC) $(LDFLAGS) -o $@ $^ $(STATIC_BOOST_LIBS)
+
+qvina2_split_static: $(SPLITOBJ)
+	$(CC) $(LDFLAGS) -o $@ $^ $(STATIC_BOOST_LIBS)
+
+static: qvina2_static qvina2_split_static
 
 clean:
 	rm -f *.o
